@@ -3,6 +3,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from collections import defaultdict
 from datetime import datetime, timedelta
 import asyncio
+from app.config import settings
 
 
 class RateLimiter:
@@ -40,8 +41,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     """Middleware for rate limiting API requests"""
     
     async def dispatch(self, request: Request, call_next):
-        # Skip rate limiting for health checks
-        if request.url.path in ["/", "/health"]:
+        # Skip rate limiting for health checks and in development mode
+        if request.url.path in ["/", "/health"] or settings.DEBUG:
             return await call_next(request)
         
         # Get client IP

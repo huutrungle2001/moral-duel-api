@@ -22,9 +22,17 @@ class AIService:
     
     def __init__(self):
         """Initialize OpenAI client."""
-        self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-        self.model = settings.OPENAI_MODEL
-        logger.info(f"AI Service initialized with model: {self.model}")
+        # Check if API key is valid
+        if settings.OPENAI_API_KEY and not settings.OPENAI_API_KEY.startswith("your-"):
+            self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+            self.model = settings.OPENAI_MODEL
+            self.enabled = True
+            logger.info(f"AI Service initialized with model: {self.model}")
+        else:
+            self.client = None
+            self.model = None
+            self.enabled = False
+            logger.warning("AI Service disabled - OpenAI API key not configured")
         
     async def generate_case(self) -> Dict[str, str]:
         """
@@ -36,6 +44,9 @@ class AIService:
         Raises:
             Exception: If AI generation fails
         """
+        if not self.enabled:
+            raise Exception("AI service not available - OpenAI API key not configured")
+        
         try:
             prompt = """Generate a thought-provoking moral dilemma for a debate platform.
 
@@ -110,6 +121,9 @@ Generate a unique, engaging moral dilemma now."""
         Raises:
             Exception: If verdict generation fails
         """
+        if not self.enabled:
+            raise Exception("AI service not available - OpenAI API key not configured")
+        
         try:
             prompt = f"""Analyze this moral dilemma and provide a verdict:
 
@@ -193,6 +207,15 @@ Be decisive but acknowledge complexity."""
         Raises:
             Exception: If moderation check fails
         """
+        # If AI is disabled, skip moderation in development mode
+        if not self.enabled:
+            if settings.DEBUG:
+                logger.info("AI moderation bypassed (development mode)")
+                return True, None
+            else:
+                logger.error("AI moderation required but API key not configured")
+                return False, "AI moderation service unavailable"
+        
         try:
             prompt = f"""Review this user-submitted moral dilemma:
 

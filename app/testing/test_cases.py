@@ -4,9 +4,10 @@ Test Case Endpoints
 Tests:
 - GET /cases (list cases with filters, pagination)
 - GET /cases/:id (get case details)
-- POST /cases (create case)
+- POST /cases (create case with AI moderation)
 - POST /cases/:id/vote (vote on case)
 - POST /cases/:id/arguments (submit argument)
+- GET /cases/:id/ai-verdict (get AI verdict for closed cases)
 """
 import sys
 from pathlib import Path
@@ -188,6 +189,31 @@ def test_duplicate_vote(case_id: int, token: str):
         return False
 
 
+def test_get_ai_verdict(case_id: int, token: str = None):
+    """Test getting AI verdict for a closed case"""
+    print_section(f"TEST: Get AI Verdict (Case ID: {case_id})")
+    
+    url = f"{BASE_URL}/cases/{case_id}/ai-verdict"
+    print_info(f"GET {url}")
+    
+    headers = get_auth_headers(token) if token else None
+    response = make_request("GET", url, headers=headers)
+    print_response(response)
+    
+    if response.status_code == 200:
+        data = response.json()
+        print_success(f"AI Verdict: {data['verdict']}")
+        print_info(f"Confidence: {data['confidence']}")
+        print_info(f"Verdict Hash: {data['verdict_hash'][:16]}...")
+        return data
+    elif response.status_code == 403:
+        print_info("Expected: Verdict only available for closed cases")
+        return None
+    else:
+        print_error(f"Failed to get AI verdict: {response.status_code}")
+        return None
+
+
 def run_all_tests():
     """Run all case tests"""
     print("\n" + "=" * 60)
@@ -208,13 +234,16 @@ def run_all_tests():
         test_list_cases(token1)  # Authenticated request
         test_list_cases_with_filters(token1)
         
-        # Create a test case
+        # Create a test case (with AI moderation)
         case_id = test_create_case(token1)
         
         if case_id:
             # Get case details
             case_details = test_get_case_details(case_id)
             test_get_case_details(case_id, token1)  # Authenticated
+            
+            # Try to get AI verdict (should fail since case is not closed)
+            test_get_ai_verdict(case_id, token1)
             
             # Vote on the case
             if token1:
