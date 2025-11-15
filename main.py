@@ -11,6 +11,8 @@ from app.middleware.rate_limiter import RateLimitMiddleware
 from app.utils.database import init_db, disconnect_db
 from app.jobs import init_scheduler, start_scheduler, stop_scheduler
 from app.jobs.case_generator import register_jobs
+from app.services.blockchain_service import blockchain_service
+from app.services.ai_service import ai_service
 
 # Configure logging
 logging.basicConfig(
