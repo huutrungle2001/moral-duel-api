@@ -1,5 +1,12 @@
 .PHONY: help install dev server start stop restart clean test lint format migrate db-push db-generate db-reset workers-start workers-stop workers-restart logs
 
+# Variables
+PYTHON := .venv/bin/python
+PIP := .venv/bin/pip
+PRISMA := .venv/bin/prisma
+UVICORN := .venv/bin/uvicorn
+PYTEST := .venv/bin/pytest
+
 # Default target
 help:
 	@echo "Moral Duel API - Available Commands"
@@ -37,20 +44,20 @@ help:
 # Installation and setup
 install:
 	@echo "Installing dependencies..."
-	pip install -r requirements.txt
+	$(PIP) install -r requirements.txt
 	@echo "Generating Prisma client..."
-	PATH="$(PWD)/.venv/bin:$$PATH" prisma generate
+	PATH="$(PWD)/.venv/bin:$$PATH" $(PRISMA) generate
 	@echo "✅ Installation complete!"
 
 # Database commands
 db-generate:
 	@echo "Generating Prisma client..."
-	PATH="$(PWD)/.venv/bin:$$PATH" prisma generate
+	PATH="$(PWD)/.venv/bin:$$PATH" $(PRISMA) generate
 	@echo "✅ Prisma client generated!"
 
 db-push:
 	@echo "Pushing database schema..."
-	python -m prisma db push
+	$(PYTHON) -m prisma db push
 	@echo "✅ Database schema updated!"
 
 db-reset:
@@ -59,7 +66,7 @@ db-reset:
 	echo; \
 	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
 		rm -f moralduel.db; \
-		python -m prisma db push; \
+		$(PYTHON) -m prisma db push; \
 		echo "✅ Database reset complete!"; \
 	else \
 		echo "❌ Cancelled"; \
@@ -67,16 +74,16 @@ db-reset:
 
 migrate:
 	@echo "Creating migration..."
-	python -m prisma migrate dev
+	$(PYTHON) -m prisma migrate dev
 
 # Development server
 dev:
 	@echo "Starting development server..."
-	python main.py
+	$(PYTHON) main.py
 
 server:
 	@echo "Starting production server..."
-	uvicorn main:app --host 0.0.0.0 --port 8000
+	$(UVICORN) main:app --host 0.0.0.0 --port 8000
 
 # Background server management
 start:
@@ -84,7 +91,7 @@ start:
 	@if [ -f .server.pid ]; then \
 		echo "❌ Server is already running (PID: $$(cat .server.pid))"; \
 	else \
-		nohup python main.py > logs/server.log 2>&1 & echo $$! > .server.pid; \
+		nohup $(PYTHON) main.py > logs/server.log 2>&1 & echo $$! > .server.pid; \
 		echo "✅ Server started (PID: $$(cat .server.pid))"; \
 		echo "   Logs: logs/server.log"; \
 	fi
@@ -135,11 +142,11 @@ workers-restart: workers-stop
 # Testing
 test:
 	@echo "Running tests..."
-	pytest
+	$(PYTEST)
 
 test-cov:
 	@echo "Running tests with coverage..."
-	pytest --cov=app --cov-report=html --cov-report=term
+	$(PYTEST) --cov=app --cov-report=html --cov-report=term
 	@echo "📊 Coverage report: htmlcov/index.html"
 
 # Code quality
