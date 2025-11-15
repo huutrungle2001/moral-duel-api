@@ -16,6 +16,7 @@ from datetime import datetime
 import aiohttp
 
 from app.config import settings
+from app.services.neo_sdk_service import neo_sdk_service
 
 logger = logging.getLogger(__name__)
 
@@ -39,8 +40,15 @@ class BlockchainService:
             not self.platform_address.startswith("your-")
         )
         
+        # Use Neo SDK service for blockchain operations
+        self.neo_sdk = neo_sdk_service
+        
         if self.enabled:
             logger.info(f"Blockchain service initialized - Network: {self.network}, RPC: {self.rpc_url}")
+            if self.neo_sdk.enabled:
+                logger.info("✓ Neo SDK integration active")
+            else:
+                logger.warning("Neo SDK not available - using HTTP RPC only")
         else:
             logger.warning("Blockchain service disabled - Neo configuration incomplete")
     
@@ -180,16 +188,30 @@ class BlockchainService:
             }
         
         try:
-            # TODO: Implement actual Neo N3 transaction
-            # This requires:
-            # 1. neo3-python or neo-mamba library
-            # 2. Transaction builder
-            # 3. Script to invoke smart contract
-            # 4. Transaction signing with private key
-            # 5. Broadcasting to network
+            # Try to use Neo SDK if available
+            if self.neo_sdk.enabled and self.verdict_contract_hash:
+                logger.info(f"Committing verdict for case {case_id} using Neo SDK...")
+                
+                try:
+                    timestamp = int(closes_at.timestamp())
+                    result = await self.neo_sdk.commit_verdict(
+                        case_id=case_id,
+                        verdict_hash=verdict_hash,
+                        timestamp=timestamp
+                    )
+                    
+                    if result.get("success"):
+                        logger.info(f"✓ Verdict committed via Neo SDK: {result.get('tx_hash', 'N/A')[:16]}...")
+                        return result
+                    
+                    # Fall through to simulation if SDK commit didn't succeed
+                    logger.warning(f"SDK commit not fully implemented, using simulation")
+                    
+                except Exception as e:
+                    logger.warning(f"Neo SDK commit failed: {str(e)}, falling back to simulation")
             
-            # For now, simulate the transaction
-            logger.info(f"Committing verdict for case {case_id} to blockchain...")
+            # Simulate transaction (development mode or SDK unavailable)
+            logger.info(f"Committing verdict for case {case_id} (simulation mode)...")
             
             # Simulate transaction creation
             tx_data = {
