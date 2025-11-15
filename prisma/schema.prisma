@@ -1,0 +1,186 @@
+generator client {
+  provider             = "prisma-client-py"
+  interface            = "asyncio"
+  recursive_type_depth = 5
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                Int       @id @default(autoincrement())
+  email             String    @unique
+  password          String
+  name              String
+  neo_wallet_address String?  @unique
+  total_points      Int       @default(0)
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+  
+  // Relations
+  cases             Case[]
+  arguments         Argument[]
+  user_votes        UserVote[]
+  rewards           Reward[]
+  badges            UserBadge[]
+  community_posts   CommunityPost[]
+}
+
+model Case {
+  id                    Int       @id @default(autoincrement())
+  title                 String
+  context               String
+  status                String    // pending_moderation, active, closed
+  ai_verdict            String?   // YES or NO (hidden until closed)
+  ai_verdict_reasoning  String?   // Hidden until closed
+  ai_confidence         Float?    // 0-1 confidence score
+  verdict_hash          String?   // SHA-256 hash committed to blockchain
+  blockchain_tx_hash    String?   // Transaction hash for verdict commitment
+  smart_contract_id     String?
+  reward_pool           Float     @default(0)
+  is_ai_generated       Boolean   @default(false)
+  created_by_id         Int?
+  created_at            DateTime  @default(now())
+  closes_at             DateTime?
+  closed_at             DateTime?
+  yes_votes             Int       @default(0)
+  no_votes              Int       @default(0)
+  total_participants    Int       @default(0)
+  
+  // Relations
+  creator               User?     @relation(fields: [created_by_id], references: [id])
+  arguments             Argument[]
+  user_votes            UserVote[]
+  rewards               Reward[]
+  
+  @@index([status])
+  @@index([closes_at])
+  @@index([created_at])
+}
+
+model Argument {
+  id              Int       @id @default(autoincrement())
+  case_id         Int
+  user_id         Int
+  content         String
+  side            String    // YES or NO
+  votes           Int       @default(0)
+  is_top_3        Boolean   @default(false)
+  created_at      DateTime  @default(now())
+  
+  // Relations
+  case            Case      @relation(fields: [case_id], references: [id], onDelete: Cascade)
+  user            User      @relation(fields: [user_id], references: [id])
+  argument_votes  ArgumentVote[]
+  
+  @@index([case_id])
+  @@index([user_id])
+  @@index([votes])
+}
+
+model ArgumentVote {
+  id              Int       @id @default(autoincrement())
+  user_id         Int
+  argument_id     Int
+  created_at      DateTime  @default(now())
+  
+  // Relations
+  argument        Argument  @relation(fields: [argument_id], references: [id], onDelete: Cascade)
+  
+  @@unique([user_id, argument_id])
+  @@index([user_id])
+  @@index([argument_id])
+}
+
+model UserVote {
+  id                  Int       @id @default(autoincrement())
+  user_id             Int
+  case_id             Int
+  side                String    // YES or NO
+  voted_at            DateTime  @default(now())
+  liked_arguments     String?   // JSON array of argument IDs (max 3)
+  has_submitted_arg   Boolean   @default(false)
+  
+  // Relations
+  user                User      @relation(fields: [user_id], references: [id])
+  case                Case      @relation(fields: [case_id], references: [id], onDelete: Cascade)
+  
+  @@unique([user_id, case_id])
+  @@index([case_id])
+  @@index([user_id])
+}
+
+model Reward {
+  id                    Int       @id @default(autoincrement())
+  user_id               Int
+  case_id               Int
+  amount                Float
+  type                  String    // winning_voter, top_argument, participant, creator
+  status                String    // pending, processing, completed, failed
+  blockchain_tx_hash    String?
+  neo_wallet_address    String?
+  created_at            DateTime  @default(now())
+  claimed_at            DateTime?
+  completed_at          DateTime?
+  
+  // Relations
+  user                  User      @relation(fields: [user_id], references: [id])
+  case                  Case      @relation(fields: [case_id], references: [id])
+  
+  @@index([user_id])
+  @@index([case_id])
+  @@index([status])
+}
+
+model Badge {
+  id              Int       @id @default(autoincrement())
+  name            String    @unique
+  description     String
+  criteria        String    // JSON describing criteria
+  bonus_tokens    Float     @default(0)
+  created_at      DateTime  @default(now())
+  
+  // Relations
+  user_badges     UserBadge[]
+}
+
+model UserBadge {
+  id              Int       @id @default(autoincrement())
+  user_id         Int
+  badge_id        Int
+  awarded_at      DateTime  @default(now())
+  
+  // Relations
+  user            User      @relation(fields: [user_id], references: [id])
+  badge           Badge     @relation(fields: [badge_id], references: [id])
+  
+  @@unique([user_id, badge_id])
+  @@index([user_id])
+}
+
+model CommunityPost {
+  id              Int       @id @default(autoincrement())
+  user_id         Int
+  content         String
+  type            String    // discussion, achievement, announcement
+  created_at      DateTime  @default(now())
+  
+  // Relations
+  user            User      @relation(fields: [user_id], references: [id])
+  
+  @@index([created_at])
+}
+
+model LeaderboardCache {
+  id              Int       @id @default(autoincrement())
+  user_id         Int       @unique
+  rank            Int
+  points          Int
+  wins            Int       @default(0)
+  updated_at      DateTime  @updatedAt
+  
+  @@index([rank])
+  @@index([points])
+}
