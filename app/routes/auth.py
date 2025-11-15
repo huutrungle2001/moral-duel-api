@@ -4,6 +4,7 @@ from typing import Optional
 from prisma import Prisma
 from app.utils.auth import hash_password, verify_password, create_access_token, decode_access_token, get_current_user
 from app.utils.database import get_db
+from app.services.wallet_service import wallet_service
 import logging
 
 logger = logging.getLogger(__name__)
@@ -144,20 +145,134 @@ async def login(data: LoginRequest, db: Prisma = Depends(get_db)):
 
 
 @router.post("/wallet/connect")
-async def connect_wallet(data: WalletConnectRequest):
-    """Connect Neo wallet to user account"""
-    # TODO: Implement Neo wallet signature verification
-    return {
-        "status": "success",
-        "message": "Wallet connection endpoint - implementation pending"
-    }
+async def connect_wallet(
+    data: WalletConnectRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Prisma = Depends(get_db)
+):
+    """
+    Connect Neo wallet to user account
+    
+    Process:
+    1. Verify the signature proves ownership of the Neo address
+    2. Check if wallet is already connected to another account
+    3. Update user's Neo wallet address
+    
+    Args:
+        data: Wallet connection request (address, signature, message)
+        current_user: Authenticated user
+        db: Database connection
+        
+    Returns:
+        Connection status
+    """
+    try:
+        # Validate Neo address format
+        validation = wallet_service.validate_address(data.neo_address)
+        if not validation.get("valid"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid Neo address: {validation.get('reason')}"
+            )
+        
+        # Verify signature
+        verification = wallet_service.verify_signature(
+            neo_address=data.neo_address,
+            message=data.message,
+            signature=data.signature
+        )
+        
+        if not verification.get("verified"):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Signature verification failed: {verification.get('reason', 'Unknown error')}"
+            )
+        
+        # Check if wallet already connected to another user
+        existing_user = await db.user.find_first(
+            where={"neo_wallet_address": data.neo_address}
+        )
+        
+        if existing_user and existing_user.id != current_user["id"]:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This wallet is already connected to another account"
+            )
+        
+        # Update user's wallet address
+        updated_user = await db.user.update(
+            where={"id": current_user["id"]},
+            data={"neo_wallet_address": data.neo_address}
+        )
+        
+        logger.info(f"✓ Wallet connected: User {current_user['id']} -> {data.neo_address}")
+        
+        return {
+            "status": "success",
+            "message": "Neo wallet successfully connected",
+            "neo_address": data.neo_address,
+            "user_id": current_user["id"],
+            "verification": verification
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Wallet connection failed: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to connect wallet: {str(e)}"
+        )
 
 
 @router.get("/wallet/verify")
-async def verify_wallet():
-    """Verify wallet connection and balance"""
-    # TODO: Implement wallet verification
-    return {
-        "status": "success",
-        "message": "Wallet verification endpoint - implementation pending"
-    }
+async def verify_wallet(current_user: dict = Depends(get_current_user)):
+    """
+    Verify wallet connection and get wallet information
+    
+    Returns:
+    - Connection status
+    - Wallet address
+    - Balances (NEO, GAS, MORAL tokens)
+    
+    Args:
+        current_user: Authenticated user
+        
+    Returns:
+        Wallet information
+    """
+    try:
+        neo_address = current_user.get("neo_wallet_address")
+        
+        if not neo_address:
+            return {
+                "connected": False,
+                "message": "No Neo wallet connected to this account"
+            }
+        
+        # Validate address
+        validation = wallet_service.validate_address(neo_address)
+        if not validation.get("valid"):
+            return {
+                "connected": False,
+                "error": "Connected wallet address is invalid",
+                "reason": validation.get("reason")
+            }
+        
+        # Get balance
+        balance_info = await wallet_service.get_balance(neo_address)
+        
+        return {
+            "connected": True,
+            "neo_address": neo_address,
+            "validation": validation,
+            "balance": balance_info,
+            "user_id": current_user["id"]
+        }
+        
+    except Exception as e:
+        logger.error(f"Wallet verification failed: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to verify wallet: {str(e)}"
+        )
