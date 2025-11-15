@@ -8,8 +8,11 @@ Tests:
 - GET /auth/wallet/verify (placeholder)
 """
 import sys
-from .config import BASE_URL, TEST_USER_1, TEST_USER_2
-from .utils import (
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+from app.testing.config import BASE_URL, TEST_USER_1, TEST_USER_2
+from app.testing.utils import (
     print_section, print_success, print_error, print_info,
     print_response, make_request
 )

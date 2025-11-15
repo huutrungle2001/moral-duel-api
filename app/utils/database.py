@@ -1,4 +1,4 @@
-import sqlite3
+from prisma import Prisma
 import redis.asyncio as redis
 from app.config import settings
 import logging
@@ -18,11 +18,10 @@ async def init_db():
     global db_connection, redis_client
     
     try:
-        # Create SQLite connection
-        db_path = settings.DATABASE_URL.replace("file:", "")
-        os.makedirs(os.path.dirname(db_path) if os.path.dirname(db_path) else ".", exist_ok=True)
-        db_connection = sqlite3.connect(db_path, check_same_thread=False)
-        logger.info(f"SQLite database connected successfully at {db_path}")
+        # Initialize Prisma client
+        db_connection = Prisma()
+        await db_connection.connect()
+        logger.info("Prisma database connected")
         
         # Try to connect to Redis (optional for now)
         try:
@@ -44,8 +43,8 @@ async def disconnect_db():
     
     try:
         if db_connection:
-            db_connection.close()
-            logger.info("SQLite database disconnected")
+            await db_connection.disconnect()
+            logger.info("Prisma database disconnected")
         
         if redis_client:
             await redis_client.close()

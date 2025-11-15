@@ -9,12 +9,15 @@ Tests:
 - POST /cases/:id/arguments (submit argument)
 """
 import sys
-from .config import BASE_URL, TEST_CASE
-from .utils import (
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+from app.testing.config import BASE_URL, TEST_CASE
+from app.testing.utils import (
     print_section, print_success, print_error, print_info,
     print_response, make_request, get_auth_headers
 )
-from .test_auth import run_all_tests as auth_tests
+from app.testing.test_auth import run_all_tests as auth_tests
 
 
 def test_list_cases(token: str = None):
