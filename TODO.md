@@ -32,7 +32,7 @@
 - [x] Build `POST /auth/register` endpoint
 - [x] Build `POST /auth/login` endpoint
 - [x] Implement JWT authentication middleware
-- [ ] Create user session management
+- [x] Create user session management
 - [x] Add password validation rules
 - [x] Implement rate limiting for auth endpoints (5 req/min)
 
@@ -62,20 +62,20 @@
 ## Phase 3: Core Case Management
 
 ### Case CRUD Operations
-- [ ] Build `GET /cases` endpoint (list all cases with filters)
-- [ ] Build `GET /cases/:id` endpoint (case details)
-- [ ] Build `POST /cases` endpoint (user-submitted cases)
-- [ ] Implement case status management (pending, active, closed)
-- [ ] Add pagination for case listings
-- [ ] Add filtering by status, date, popularity
-- [ ] Add sorting options
+- [x] Build `GET /cases` endpoint (list all cases with filters)
+- [x] Build `GET /cases/:id` endpoint (case details)
+- [x] Build `POST /cases` endpoint (user-submitted cases)
+- [x] Implement case status management (pending, active, closed)
+- [x] Add pagination for case listings
+- [x] Add filtering by status, date, popularity
+- [x] Add sorting options
 - [ ] Build `GET /cases/:id/blockchain` endpoint
 - [ ] Build `GET /cases/:id/ai-verdict` endpoint (closed cases only)
 
 ### Case Validation
-- [ ] Implement case content moderation rules
-- [ ] Validate case title (min/max length)
-- [ ] Validate case context
+- [x] Implement case content moderation rules
+- [x] Validate case title (min/max length)
+- [x] Validate case context
 - [ ] Implement rate limiting for case creation (3/hour)
 - [ ] Add duplicate case detection
 
@@ -106,23 +106,23 @@
 ## Phase 5: Voting System
 
 ### Vote Management
-- [ ] Build `POST /cases/:caseId/vote` endpoint (YES/NO vote)
-- [ ] Validate user can only vote once per case
-- [ ] Track vote timestamp
-- [ ] Update vote counts in real-time
+- [x] Build `POST /cases/:caseId/vote` endpoint (YES/NO vote)
+- [x] Validate user can only vote once per case
+- [x] Track vote timestamp
+- [x] Update vote counts in real-time
 - [ ] Implement rate limiting for voting (10 req/min)
-- [ ] Add vote validation rules
-- [ ] Prevent voting on closed cases
+- [x] Add vote validation rules
+- [x] Prevent voting on closed cases
 
 ### Argument System
-- [ ] Build `POST /arguments/:argumentId/vote` endpoint (like argument)
-- [ ] Build `DELETE /arguments/:argumentId/vote` endpoint (unlike)
-- [ ] Enforce max 3 argument likes per user per case
-- [ ] Build `POST /cases/:caseId/arguments` endpoint
-- [ ] Validate argument length (20-300 chars)
-- [ ] Require user voted before submitting argument
-- [ ] Require user liked 3 arguments before submitting
-- [ ] Track argument vote counts
+- [x] Build `POST /arguments/:argumentId/vote` endpoint (like argument)
+- [x] Build `DELETE /arguments/:argumentId/vote` endpoint (unlike)
+- [x] Enforce max 3 argument likes per user per case
+- [x] Build `POST /cases/:caseId/arguments` endpoint
+- [x] Validate argument length (20-300 chars)
+- [x] Require user voted before submitting argument
+- [x] Require user liked 3 arguments before submitting
+- [x] Track argument vote counts
 - [ ] Identify top 3 arguments by votes
 
 ## Phase 6: Blockchain Smart Contracts

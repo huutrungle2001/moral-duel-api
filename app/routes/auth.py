@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException, status, Depends
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, validator
 from typing import Optional
-from app.utils.auth import hash_password, verify_password, create_access_token, decode_access_token
+from prisma import Prisma
+from app.utils.auth import hash_password, verify_password, create_access_token, decode_access_token, get_current_user
 from app.utils.database import get_db
 import logging
 
@@ -13,6 +14,18 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
     name: str
+
+    @validator('password')
+    def password_validation(cls, v):
+        if len(v) < 8:
+            raise ValueError('Password must be at least 8 characters')
+        return v
+
+    @validator('name')
+    def name_validation(cls, v):
+        if len(v.strip()) < 2:
+            raise ValueError('Name must be at least 2 characters')
+        return v.strip()
 
 
 class LoginRequest(BaseModel):
@@ -32,32 +45,44 @@ class AuthResponse(BaseModel):
     user: dict
 
 
-@router.post("/register", response_model=AuthResponse)
-async def register(data: RegisterRequest):
+@router.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
+async def register(data: RegisterRequest, db: Prisma = Depends(get_db)):
     """Register a new user"""
-    # TODO: Implement with database once Prisma client is generated
     try:
-        # Validate password
-        if len(data.password) < 8:
+        # Check if user already exists
+        existing_user = await db.user.find_unique(where={"email": data.email})
+        if existing_user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Password must be at least 8 characters"
+                detail="Email already registered"
             )
         
-        # Generate token (mock user for now)
-        token = create_access_token(data={"sub": "1", "email": data.email})
+        # Hash password
+        hashed_password = hash_password(data.password)
         
-        logger.info(f"User registered (mock): {data.email}")
+        # Create user
+        user = await db.user.create(
+            data={
+                "email": data.email,
+                "password": hashed_password,
+                "name": data.name,
+            }
+        )
+        
+        # Generate token
+        token = create_access_token(data={"sub": str(user.id), "email": user.email})
+        
+        logger.info(f"User registered: {user.email} (ID: {user.id})")
         
         return {
             "access_token": token,
             "token_type": "bearer",
             "user": {
-                "id": 1,
-                "email": data.email,
-                "name": data.name,
-                "neo_wallet_address": None,
-                "total_points": 0
+                "id": user.id,
+                "email": user.email,
+                "name": user.name,
+                "neo_wallet_address": user.neo_wallet_address,
+                "total_points": user.total_points
             }
         }
         
@@ -72,24 +97,39 @@ async def register(data: RegisterRequest):
 
 
 @router.post("/login", response_model=AuthResponse)
-async def login(data: LoginRequest):
+async def login(data: LoginRequest, db: Prisma = Depends(get_db)):
     """Login user"""
-    # TODO: Implement with database once Prisma client is generated
     try:
-        # Generate token (mock user for now)
-        token = create_access_token(data={"sub": "1", "email": data.email})
+        # Find user by email
+        user = await db.user.find_unique(where={"email": data.email})
         
-        logger.info(f"User logged in (mock): {data.email}")
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid email or password"
+            )
+        
+        # Verify password
+        if not verify_password(data.password, user.password):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid email or password"
+            )
+        
+        # Generate token
+        token = create_access_token(data={"sub": str(user.id), "email": user.email})
+        
+        logger.info(f"User logged in: {user.email} (ID: {user.id})")
         
         return {
             "access_token": token,
             "token_type": "bearer",
             "user": {
-                "id": 1,
-                "email": data.email,
-                "name": "Test User",
-                "neo_wallet_address": None,
-                "total_points": 0
+                "id": user.id,
+                "email": user.email,
+                "name": user.name,
+                "neo_wallet_address": user.neo_wallet_address,
+                "total_points": user.total_points
             }
         }
         
