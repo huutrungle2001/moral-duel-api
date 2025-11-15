@@ -9,6 +9,8 @@ import logging
 from datetime import datetime
 from apscheduler.triggers.interval import IntervalTrigger
 from app.services.ai_service import ai_service
+from app.services.blockchain_service import blockchain_service
+from app.services.reward_service import reward_service
 from app.utils.database import get_db
 
 logger = logging.getLogger(__name__)
@@ -22,8 +24,9 @@ async def generate_ai_case_job():
     1. Generate moral dilemma using AI
     2. Generate AI verdict
     3. Hash the verdict
-    4. Store case with hidden verdict
-    5. Set 24-hour timer
+    4. Commit verdict hash to blockchain
+    5. Store case with hidden verdict and blockchain TX hash
+    6. Set 24-hour timer
     """
     try:
         logger.info("Starting AI case generation job...")
@@ -36,6 +39,20 @@ async def generate_ai_case_job():
         # Generate complete case with verdict
         case_data = await ai_service.generate_case_with_verdict()
         
+        # Commit verdict hash to blockchain BEFORE creating the case
+        blockchain_tx = None
+        try:
+            blockchain_tx = await blockchain_service.commit_verdict_hash(
+                case_id=0,  # Temporary, will update after case creation
+                verdict_hash=case_data["verdict_hash"],
+                verdict=case_data["verdict"],
+                closes_at=case_data["closes_at"]
+            )
+            logger.info(f"✓ Verdict committed to blockchain: TX={blockchain_tx.get('tx_hash', 'N/A')[:16]}...")
+        except Exception as e:
+            logger.error(f"Blockchain commitment failed (continuing with case creation): {str(e)}")
+            # Continue with case creation even if blockchain fails
+        
         # Create case in database
         case = await db.case.create(
             data={
@@ -46,6 +63,7 @@ async def generate_ai_case_job():
                 "ai_verdict_reasoning": case_data["verdict_reasoning"],
                 "ai_confidence": case_data["verdict_confidence"],
                 "verdict_hash": case_data["verdict_hash"],
+                "blockchain_tx_hash": blockchain_tx.get("tx_hash") if blockchain_tx else None,
                 "closes_at": case_data["closes_at"],
                 "is_ai_generated": True,
                 "yes_votes": 0,
@@ -58,10 +76,9 @@ async def generate_ai_case_job():
             f"✓ AI case generated: ID={case.id}, "
             f"Title='{case.title[:50]}...', "
             f"Verdict={case_data['verdict']} (hidden), "
+            f"Blockchain TX={case.blockchain_tx_hash[:16] if case.blockchain_tx_hash else 'None'}..., "
             f"Closes at {case_data['closes_at']}"
         )
-        
-        # TODO: Commit verdict hash to blockchain
         
     except Exception as e:
         logger.error(f"AI case generation job failed: {str(e)}", exc_info=True)
@@ -105,6 +122,21 @@ async def close_expired_cases_job():
         
         for case in cases_to_close:
             try:
+                # Get all arguments for this case, sorted by votes
+                arguments = await db.argument.find_many(
+                    where={"case_id": case.id},
+                    order={"votes": "desc"}
+                )
+                
+                # Mark top 3 arguments
+                top_3_ids = [arg.id for arg in arguments[:3]]
+                if top_3_ids:
+                    await db.argument.update_many(
+                        where={"id": {"in": top_3_ids}},
+                        data={"is_top_3": True}
+                    )
+                    logger.info(f"Marked {len(top_3_ids)} top arguments for case {case.id}")
+                
                 # Close the case
                 await db.case.update(
                     where={"id": case.id},
@@ -117,11 +149,33 @@ async def close_expired_cases_job():
                 logger.info(
                     f"✓ Case {case.id} closed: "
                     f"Verdict={case.ai_verdict}, "
-                    f"YES={case.yes_votes}, NO={case.no_votes}"
+                    f"YES={case.yes_votes}, NO={case.no_votes}, "
+                    f"Arguments={len(arguments)}, Top 3 marked={len(top_3_ids)}"
                 )
                 
-                # TODO: Mark top 3 arguments
-                # TODO: Calculate rewards
+                # Calculate and distribute rewards
+                try:
+                    logger.info(f"Calculating rewards for case {case.id}...")
+                    reward_calc = await reward_service.calculate_rewards(db, case)
+                    
+                    if reward_calc.get("distributions"):
+                        # Create reward records
+                        rewards = await reward_service.create_reward_records(
+                            db,
+                            case.id,
+                            reward_calc["distributions"]
+                        )
+                        logger.info(
+                            f"✓ Rewards calculated: {len(rewards)} users rewarded, "
+                            f"Total pool: {reward_calc['reward_pool']:.2f}"
+                        )
+                    else:
+                        logger.info(f"No rewards to distribute for case {case.id}")
+                        
+                except Exception as e:
+                    logger.error(f"Failed to calculate rewards for case {case.id}: {str(e)}")
+                    # Don't fail case closure if rewards fail
+                
                 # TODO: Verify verdict against blockchain
                 
             except Exception as e:
