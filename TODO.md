@@ -39,12 +39,12 @@
 ## Phase 2: Neo Wallet Integration
 
 ### Wallet Connection
-- [ ] Research Neo N3 wallet signature verification
-- [ ] Install Neo N3 Python SDK
-- [ ] Build `POST /auth/wallet/connect` endpoint
-- [ ] Implement Neo wallet signature verification
-- [ ] Build `GET /auth/wallet/verify` endpoint
-- [ ] Store Neo wallet address in user profile
+- [x] Research Neo N3 wallet signature verification
+- [x] Install Neo N3 Python SDK (neo-mamba)
+- [x] Build `POST /auth/wallet/connect` endpoint
+- [x] Implement Neo wallet signature verification
+- [x] Build `GET /auth/wallet/verify` endpoint
+- [x] Store Neo wallet address in user profile
 - [ ] Test with NeoLine wallet
 - [ ] Test with O3 wallet
 - [ ] Test with OneGate wallet
@@ -137,16 +137,18 @@
 - [x] Implement `transfer()` method
 - [x] Implement `balanceOf()` method
 - [x] Implement `totalSupply()` method
+- [x] Integrate Neo SDK for contract invocation
+- [x] Build wallet service for signature verification
 - [ ] Test smart contracts on Neo N3 TestNet (requires deployment)
-- [ ] Deploy Verdict Storage Contract (requires Neo SDK setup)
-- [ ] Deploy NEP-17 Token Contract (requires Neo SDK setup)
+- [ ] Deploy Verdict Storage Contract (requires setup)
+- [ ] Deploy NEP-17 Token Contract (requires setup)
 - [ ] Store contract hashes in environment variables
 
 ### Verdict Commitment
 - [x] Implement verdict hash generation
 - [x] Create blockchain transaction builder
 - [x] Build verdict commitment function
-- [x] Invoke smart contract for verdict storage (simulated, ready for real SDK)
+- [x] Invoke smart contract for verdict storage (SDK integrated)
 - [x] Store blockchain transaction hash in database
 - [ ] Add transaction confirmation monitoring (background job)
 - [x] Build `POST /blockchain/verify-verdict` endpoint
