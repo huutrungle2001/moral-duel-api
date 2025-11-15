@@ -70,7 +70,7 @@
 - [x] Add filtering by status, date, popularity
 - [x] Add sorting options
 - [ ] Build `GET /cases/:id/blockchain` endpoint
-- [ ] Build `GET /cases/:id/ai-verdict` endpoint (closed cases only)
+- [x] Build `GET /cases/:id/ai-verdict` endpoint (closed cases only)
 
 ### Case Validation
 - [x] Implement case content moderation rules
@@ -82,26 +82,26 @@
 ## Phase 4: AI Integration
 
 ### AI Service Setup
-- [ ] Set up OpenAI API connection
-- [ ] Create AI service abstraction layer
-- [ ] Implement AI case generation prompt
-- [ ] Implement AI verdict generation prompt
-- [ ] Implement AI moderation for user-submitted cases
-- [ ] Add confidence scoring for AI verdicts
+- [x] Set up OpenAI API connection
+- [x] Create AI service abstraction layer
+- [x] Implement AI case generation prompt
+- [x] Implement AI verdict generation prompt
+- [x] Implement AI moderation for user-submitted cases
+- [x] Add confidence scoring for AI verdicts
 - [ ] Test AI response quality
 - [ ] Add fallback for AI service failures
 - [ ] Implement AI response caching
 
 ### AI Case Generator (Background Job)
-- [ ] Set up background job scheduler (APScheduler or Celery)
-- [ ] Create AI case generation job (runs every 12 hours)
-- [ ] Generate moral dilemma using AI
-- [ ] Generate AI verdict BEFORE case goes live
-- [ ] Create verdict hash (SHA-256)
-- [ ] Store case with hidden verdict
-- [ ] Set case timer (24 hours)
-- [ ] Add job error handling and retry logic
-- [ ] Add job monitoring and logging
+- [x] Set up background job scheduler (APScheduler or Celery)
+- [x] Create AI case generation job (runs every 12 hours)
+- [x] Generate moral dilemma using AI
+- [x] Generate AI verdict BEFORE case goes live
+- [x] Create verdict hash (SHA-256)
+- [x] Store case with hidden verdict
+- [x] Set case timer (24 hours)
+- [x] Add job error handling and retry logic
+- [x] Add job monitoring and logging
 
 ## Phase 5: Voting System
 

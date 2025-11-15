@@ -9,6 +9,8 @@ from app.config import settings
 from app.routes import auth, cases, arguments, profile, blockchain, leaderboard, community
 from app.middleware.rate_limiter import RateLimitMiddleware
 from app.utils.database import init_db, disconnect_db
+from app.jobs import init_scheduler, start_scheduler, stop_scheduler
+from app.jobs.case_generator import register_jobs
 
 # Configure logging
 logging.basicConfig(
@@ -36,10 +38,18 @@ async def lifespan(app: FastAPI):
     await init_db()
     logger.info("Database initialized")
     
+    # Initialize and start background jobs
+    scheduler = init_scheduler()
+    register_jobs(scheduler)
+    start_scheduler()
+    logger.info("Background jobs started")
+    
     yield
     
     # Shutdown
     logger.info("Shutting down Moral Duel API...")
+    stop_scheduler()
+    logger.info("Background jobs stopped")
     await disconnect_db()
     logger.info("Database disconnected")
 

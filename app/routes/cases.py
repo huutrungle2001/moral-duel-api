@@ -8,6 +8,7 @@ import math
 from app.utils.database import get_db
 from app.utils.auth import get_current_user, get_current_user_optional
 from app.services.case_service import CaseService
+from app.services.ai_service import ai_service
 from app.models.case_models import (
     CreateCaseRequest,
     VoteRequest,
@@ -214,8 +215,19 @@ async def create_case(
     db: Prisma = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    """Create user-submitted case"""
+    """Create user-submitted case with AI moderation"""
     try:
+        # Run AI moderation check
+        logger.info(f"Moderating case from user {current_user.id}")
+        approved, reason = await ai_service.moderate_case(data.title, data.context)
+        
+        if not approved:
+            logger.warning(f"Case rejected: {reason}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Content not approved: {reason or 'Inappropriate content detected'}"
+            )
+        
         case = await CaseService.create_case(
             db=db,
             title=data.title,
@@ -224,7 +236,7 @@ async def create_case(
             is_ai_generated=False
         )
         
-        logger.info(f"User {current_user.id} created case {case.id}")
+        logger.info(f"✓ User {current_user.id} created case {case.id}")
         
         return {
             "message": "Case created successfully",
@@ -232,6 +244,8 @@ async def create_case(
             "status": case.status
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error creating case: {str(e)}")
         raise HTTPException(
@@ -247,9 +261,51 @@ async def get_case_blockchain(case_id: int):
 
 
 @router.get("/{case_id}/ai-verdict")
-async def get_ai_verdict(case_id: int):
+async def get_ai_verdict(
+    case_id: int,
+    db: Prisma = Depends(get_db)
+):
     """Get AI verdict and reasoning (closed cases only)"""
-    return {"message": f"Case {case_id} AI verdict endpoint - implementation pending"}
+    try:
+        # Get case
+        case = await db.case.find_unique(
+            where={"id": case_id}
+        )
+        
+        if not case:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Case not found"
+            )
+        
+        # Only allow verdict for closed cases
+        if case.status != "closed":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="AI verdict only available for closed cases"
+            )
+        
+        # Return verdict data
+        return {
+            "case_id": case.id,
+            "verdict": case.ai_verdict,
+            "reasoning": case.ai_verdict_reasoning,
+            "confidence": case.ai_confidence,
+            "verdict_hash": case.verdict_hash,
+            "blockchain_tx_hash": case.blockchain_tx_hash,
+            "yes_votes": case.yes_votes,
+            "no_votes": case.no_votes,
+            "closed_at": case.closed_at
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting AI verdict {case_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get AI verdict"
+        )
 
 
 @router.post("/{case_id}/vote", response_model=VoteResponse)
