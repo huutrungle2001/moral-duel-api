@@ -55,5 +55,9 @@ htmlcov/
 *.log
 logs/
 
+# Process IDs
+.server.pid
+.workers.pid
+
 # Prisma
 prisma/migrations/
