@@ -195,6 +195,10 @@ def register_jobs(scheduler):
     Args:
         scheduler: APScheduler instance
     """
+    from app.jobs.transaction_monitor import monitor_transactions_job, check_verdict_transactions_job
+    from app.jobs.leaderboard_updater import update_leaderboard_cache_job
+    from app.jobs.badge_checker import check_badges_job
+    
     # AI Case Generation - every 12 hours
     scheduler.add_job(
         generate_ai_case_job,
@@ -217,7 +221,48 @@ def register_jobs(scheduler):
     )
     logger.info("✓ Registered: Case closure (every 5 minutes)")
     
-    # TODO: Transaction monitoring (every 30 seconds)
-    # TODO: Leaderboard update (every 15 minutes)
+    # Transaction Monitoring - every 30 seconds
+    scheduler.add_job(
+        monitor_transactions_job,
+        trigger=IntervalTrigger(seconds=30),
+        id="transaction_monitor",
+        name="Monitor blockchain transactions",
+        replace_existing=True,
+        max_instances=1
+    )
+    logger.info("✓ Registered: Transaction monitoring (every 30 seconds)")
     
-    logger.info("✓ All background jobs registered")
+    # Verdict Transaction Check - every 2 minutes
+    scheduler.add_job(
+        check_verdict_transactions_job,
+        trigger=IntervalTrigger(minutes=2),
+        id="verdict_check",
+        name="Check verdict transactions",
+        replace_existing=True,
+        max_instances=1
+    )
+    logger.info("✓ Registered: Verdict transaction check (every 2 minutes)")
+    
+    # Leaderboard Update - every 15 minutes
+    scheduler.add_job(
+        update_leaderboard_cache_job,
+        trigger=IntervalTrigger(minutes=15),
+        id="leaderboard_update",
+        name="Update leaderboard cache",
+        replace_existing=True,
+        max_instances=1
+    )
+    logger.info("✓ Registered: Leaderboard update (every 15 minutes)")
+    
+    # Badge Checker - every hour
+    scheduler.add_job(
+        check_badges_job,
+        trigger=IntervalTrigger(hours=1),
+        id="badge_checker",
+        name="Check and award badges",
+        replace_existing=True,
+        max_instances=1
+    )
+    logger.info("✓ Registered: Badge checker (every hour)")
+    
+    logger.info("✓ All background jobs registered (6 jobs)")
