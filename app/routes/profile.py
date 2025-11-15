@@ -9,6 +9,7 @@ from app.utils.database import get_db
 from app.utils.auth import get_current_user
 from app.services.reward_service import reward_service
 from app.services.blockchain_service import blockchain_service
+from app.jobs.badge_checker import get_user_badges, get_badge_progress
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -401,4 +402,57 @@ async def get_reward_status(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get reward status"
+        )
+
+
+@router.get("/badges")
+async def get_badges(
+    db: Prisma = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """
+    Get user's earned badges
+    
+    Returns all badges the user has earned with details
+    """
+    try:
+        badges = await get_user_badges(db, current_user.id)
+        
+        return {
+            "user_id": current_user.id,
+            "total_badges": len(badges),
+            "badges": badges
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting badges: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get badges"
+        )
+
+
+@router.get("/badges/progress")
+async def get_badge_progress_endpoint(
+    db: Prisma = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """
+    Get user's progress toward earning badges
+    
+    Shows which badges are earned and progress toward unearned badges
+    """
+    try:
+        progress = await get_badge_progress(db, current_user.id)
+        
+        return {
+            "user_id": current_user.id,
+            "progress": progress
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting badge progress: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get badge progress"
         )
