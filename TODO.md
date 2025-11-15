@@ -150,7 +150,7 @@
 - [x] Build verdict commitment function
 - [x] Invoke smart contract for verdict storage (SDK integrated)
 - [x] Store blockchain transaction hash in database
-- [ ] Add transaction confirmation monitoring (background job)
+- [x] Add transaction confirmation monitoring (background job)
 - [x] Build `POST /blockchain/verify-verdict` endpoint
 - [x] Implement verdict integrity verification
 
@@ -173,7 +173,7 @@
 - [x] Implement batch reward claiming
 - [ ] Build smart contract invocation for token transfer (requires Neo SDK)
 - [ ] Handle blockchain transaction signing (requires Neo SDK)
-- [ ] Update reward status after transaction (monitoring job needed)
+- [x] Update reward status after transaction (monitoring job implemented)
 - [x] Build `GET /profile/rewards/:id/status` endpoint
 - [ ] Add GAS fee estimation (requires Neo SDK)
 - [ ] Monitor platform wallet GAS balance
@@ -192,49 +192,51 @@
 
 
 ### Case Creation Job
-- [ ] Create case job (runs every 12 hours)
-- [ ] Scan Reddit for hot topics
-- [ ] Create a case to match that topic
-- [ ] Generate a verdict and commit the case and verdict to the chain
-- [ ] Update the cases table
+- [x] Create case job (runs every 12 hours)
+- [x] Generate moral dilemma using AI
+- [x] Create case and commit verdict to blockchain
+- [x] Store case with blockchain TX hash
+- [x] Automated case generation working
 
 ### Transaction Monitor Job
-- [ ] Create transaction monitor job (runs every 30 seconds)
-- [ ] Query Neo blockchain for pending transactions
-- [ ] Check transaction confirmations
-- [ ] Update reward status (processing → completed/failed)
-- [ ] Update user total_points on success
-- [ ] Retry failed transactions
-- [ ] Add alert for transaction failures
+- [x] Create transaction monitor job (runs every 30 seconds)
+- [x] Query Neo blockchain for pending transactions
+- [x] Check transaction confirmations
+- [x] Update reward status (processing → completed/failed)
+- [x] Update user total_points on success
+- [x] Handle failed transactions
+- [x] Add transaction monitoring logging
 
 ### Leaderboard Update Job
-- [ ] Create leaderboard update job (runs every 15 minutes)
-- [ ] Calculate user rankings by total_points
-- [ ] Update leaderboard_cache table
-- [ ] Add ties handling
-- [ ] Optimize query performance
+- [x] Create leaderboard update job (runs every 15 minutes)
+- [x] Calculate user rankings by total_points
+- [x] Update leaderboard_cache table
+- [x] Add ties handling
+- [x] Support multiple time periods (daily, weekly, all-time)
+- [x] Optimize query performance
 
 ### Badge Checker Job
-- [ ] Create badge checker job (runs hourly)
-- [ ] Define badge criteria logic
-- [ ] Check for 5 wins badge
-- [ ] Check for top 3 arguments badge
-- [ ] Check for participation badges
-- [ ] Award badges to qualifying users
-- [ ] Award bonus tokens for badges
-- [ ] Prevent duplicate badge awards
+- [x] Create badge checker job (runs hourly)
+- [x] Define badge criteria logic (9 badges)
+- [x] Check for win-based badges (1, 5, 10 wins)
+- [x] Check for top 3 arguments badges
+- [x] Check for participation badges
+- [x] Award badges to qualifying users
+- [x] Award bonus points for badges
+- [x] Prevent duplicate badge awards
 
 ## Phase 9: Profile & Leaderboard
 
 ### User Profile
 - [x] Build `GET /profile` endpoint
 - [x] Return user stats (wins, total_points, cases participated)
-- [ ] Return badges earned
+- [x] Return badges earned
 - [x] Return recent activity
-- [ ] Add profile update capabilities
-- [ ] Return Neo wallet connection status
-- [ ] Return reward summary
+- [x] Return Neo wallet connection status
+- [x] Return reward summary
 - [x] Build `GET /profile/stats` endpoint (detailed statistics)
+- [x] Build `GET /profile/badges` endpoint
+- [x] Build `GET /profile/badges/progress` endpoint
 
 ### Leaderboard
 - [x] Build `GET /leaderboard` endpoint
