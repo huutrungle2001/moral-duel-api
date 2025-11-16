@@ -9,30 +9,38 @@ Provides AI-powered features:
 import hashlib
 import json
 import logging
+import os
 from typing import Dict, Optional, Tuple
 from datetime import datetime, timedelta
-from openai import AsyncOpenAI
 from app.config import settings
+
+# Set Gemini API key in environment BEFORE importing Spoon AI
+# Spoon AI uses GEMINI_API_KEY env variable for Gemini provider
+if settings.GOOGLE_API_KEY and not settings.GOOGLE_API_KEY.startswith("your-"):
+    os.environ["GEMINI_API_KEY"] = settings.GOOGLE_API_KEY
+
+from spoon_ai.chat import ChatBot
 
 logger = logging.getLogger(__name__)
 
 
 class AIService:
-    """Service for AI-powered features using OpenAI GPT-4."""
+    """Service for AI-powered features using Spoon AI with Google Gemini."""
     
     def __init__(self):
-        """Initialize OpenAI client."""
+        """Initialize Spoon AI client with Google Gemini."""
         # Check if API key is valid
-        if settings.OPENAI_API_KEY and not settings.OPENAI_API_KEY.startswith("your-"):
-            self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-            self.model = settings.OPENAI_MODEL
+        if settings.GOOGLE_API_KEY and not settings.GOOGLE_API_KEY.startswith("your-"):
+            self.client = ChatBot(
+                model_name="gemini-2.0-flash-exp",
+                llm_provider="gemini"
+            )
             self.enabled = True
-            logger.info(f"AI Service initialized with model: {self.model}")
+            logger.info("AI Service initialized with Spoon AI + Google Gemini")
         else:
             self.client = None
-            self.model = None
             self.enabled = False
-            logger.warning("AI Service disabled - OpenAI API key not configured")
+            logger.warning("AI Service disabled - Google API key not configured")
         
     async def generate_case(self) -> Dict[str, str]:
         """
@@ -45,9 +53,11 @@ class AIService:
             Exception: If AI generation fails
         """
         if not self.enabled:
-            raise Exception("AI service not available - OpenAI API key not configured")
+            raise Exception("AI service not available - Google API key not configured")
         
         try:
+            system_prompt = "You are a moral philosophy expert creating thought-provoking ethical dilemmas for debate."
+            
             prompt = """Generate a thought-provoking moral dilemma for a debate platform.
 
 Requirements:
@@ -69,18 +79,21 @@ technological progress vs human values, justice vs mercy, truth vs kindness.
 
 Generate a unique, engaging moral dilemma now."""
 
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": "You are a moral philosophy expert creating thought-provoking ethical dilemmas for debate."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.8,
-                max_tokens=800,
-                response_format={"type": "json_object"}
+            response = await self.client.ask(
+                messages=[{"role": "user", "content": prompt}],
+                system_msg=system_prompt
             )
             
-            content = response.choices[0].message.content
+            # Extract content from response
+            content = response if isinstance(response, str) else str(response)
+            
+            # Try to parse JSON from the response
+            # Spoon AI may return markdown-wrapped JSON
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0].strip()
+            elif "```" in content:
+                content = content.split("```")[1].split("```")[0].strip()
+            
             case_data = json.loads(content)
             
             # Validate required fields
@@ -122,9 +135,11 @@ Generate a unique, engaging moral dilemma now."""
             Exception: If verdict generation fails
         """
         if not self.enabled:
-            raise Exception("AI service not available - OpenAI API key not configured")
+            raise Exception("AI service not available - Google API key not configured")
         
         try:
+            system_prompt = "You are an impartial moral philosophy expert providing well-reasoned ethical judgments."
+            
             prompt = f"""Analyze this moral dilemma and provide a verdict:
 
 Title: {title}
@@ -146,18 +161,20 @@ Return JSON:
 
 Be decisive but acknowledge complexity."""
 
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": "You are an impartial moral philosophy expert providing well-reasoned ethical judgments."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.3,
-                max_tokens=800,
-                response_format={"type": "json_object"}
+            response = await self.client.ask(
+                messages=[{"role": "user", "content": prompt}],
+                system_msg=system_prompt
             )
             
-            content = response.choices[0].message.content
+            # Extract content from response
+            content = response if isinstance(response, str) else str(response)
+            
+            # Try to parse JSON from the response
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0].strip()
+            elif "```" in content:
+                content = content.split("```")[1].split("```")[0].strip()
+            
             verdict_data = json.loads(content)
             
             # Validate
@@ -217,6 +234,8 @@ Be decisive but acknowledge complexity."""
                 return False, "AI moderation service unavailable"
         
         try:
+            system_prompt = "You are a content moderator ensuring guidelines are followed while allowing controversial but respectful debates."
+            
             prompt = f"""Review this user-submitted moral dilemma:
 
 Title: {title}
@@ -243,18 +262,20 @@ Return JSON:
   "reason": "Brief explanation if rejected, null if approved"
 }}"""
 
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": "You are a content moderator ensuring guidelines are followed while allowing controversial but respectful debates."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.2,
-                max_tokens=200,
-                response_format={"type": "json_object"}
+            response = await self.client.ask(
+                messages=[{"role": "user", "content": prompt}],
+                system_msg=system_prompt
             )
             
-            content = response.choices[0].message.content
+            # Extract content from response
+            content = response if isinstance(response, str) else str(response)
+            
+            # Try to parse JSON from the response
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0].strip()
+            elif "```" in content:
+                content = content.split("```")[1].split("```")[0].strip()
+            
             moderation_data = json.loads(content)
             
             approved = moderation_data.get("approved", False)
